@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ERROR_0313</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  :root {
+    --bg: #0a0a0a;
+    --accent: #00ff41;
+    --danger: #ff0033;
+    --text-dim: #003d10;
+  }
+  body {
+    background: var(--bg);
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  /* CRT scanlines */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
+    pointer-events: none; z-index: 1000;
+  }
+  /* Vignette */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%);
+    pointer-events: none; z-index: 999;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.5} 94%{opacity:1} 95.5%{opacity:.3} 96%{opacity:1} }
+  .container {
+    text-align: center;
+    animation: flicker 8s infinite;
+    padding: 20px;
+  }
+  .title {
+    font-size: 14px;
+    color: var(--danger);
+    letter-spacing: 6px;
+    margin-bottom: 20px;
+  }
+  .msg {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    line-height: 2;
+  }
+  .cur { animation: blink 1s step-end infinite; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="title">SYSTEM_BREACH</div>
+  <div class="msg">
+    > CONNECTION ESTABLISHED<br>
+    > LOADING SEQUENCE...<br>
+    > STAND BY<span class="cur">_</span>
+  </div>
+</div>
+</body>
+</html>
