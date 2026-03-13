@@ -80,8 +80,7 @@
     inset: 0;
     z-index: 2;
     background: var(--bg);
-    touch-action: none;
-    transition: background-position 0s;
+    touch-action: manipulation;
   }
   .dark-overlay.active {
     background: radial-gradient(circle 90px at var(--fx) var(--fy), transparent 0%, transparent 40%, var(--bg) 100%);
@@ -237,25 +236,46 @@ document.getElementById('ascii').textContent = BIRTH_ASCII;
 // ============================================
 const overlay = document.getElementById('overlay');
 
-function onTouch(e) {
-  e.preventDefault();
-  const t = e.touches ? e.touches[0] : e;
-  overlay.style.setProperty('--fx', t.clientX + 'px');
-  overlay.style.setProperty('--fy', t.clientY + 'px');
+let touching = false;
+
+function updateFlashlight(x, y) {
+  overlay.style.setProperty('--fx', x + 'px');
+  overlay.style.setProperty('--fy', y + 'px');
   overlay.classList.add('active');
 }
 
-function onTouchEnd() {
+function hideFlashlight() {
+  touching = false;
   overlay.classList.remove('active');
 }
 
-overlay.addEventListener('touchstart', onTouch, { passive: false });
-overlay.addEventListener('touchmove', onTouch, { passive: false });
-overlay.addEventListener('touchend', onTouchEnd);
-overlay.addEventListener('mousedown', (e) => { onTouch(e); });
-overlay.addEventListener('mousemove', (e) => { if (overlay.classList.contains('active')) onTouch(e); });
-overlay.addEventListener('mouseup', onTouchEnd);
-overlay.addEventListener('mouseleave', onTouchEnd);
+// Touch events
+overlay.addEventListener('touchstart', (e) => {
+  touching = true;
+  const t = e.touches[0];
+  updateFlashlight(t.clientX, t.clientY);
+}, { passive: true });
+
+overlay.addEventListener('touchmove', (e) => {
+  if (!touching) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  updateFlashlight(t.clientX, t.clientY);
+}, { passive: false });
+
+overlay.addEventListener('touchend', hideFlashlight);
+overlay.addEventListener('touchcancel', hideFlashlight);
+
+// Mouse events (PC fallback)
+overlay.addEventListener('mousedown', (e) => {
+  touching = true;
+  updateFlashlight(e.clientX, e.clientY);
+});
+overlay.addEventListener('mousemove', (e) => {
+  if (touching) updateFlashlight(e.clientX, e.clientY);
+});
+overlay.addEventListener('mouseup', hideFlashlight);
+overlay.addEventListener('mouseleave', hideFlashlight);
 
 // ============================================
 // Code input logic
