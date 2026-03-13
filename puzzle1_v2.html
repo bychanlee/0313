@@ -6,13 +6,12 @@
 <title>SYSTEM_BREACH</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-  
+
   * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-  
+
   :root {
     --bg: #0a0a0a;
     --accent: #00ff41;
-    --accent-dim: #004d13;
     --danger: #ff0033;
     --danger-dim: #330009;
     --text-dim: #003d10;
@@ -27,24 +26,18 @@
     cursor: default;
   }
 
-  /* CRT scanlines */
   body::before {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
-    pointer-events: none;
-    z-index: 1000;
+    pointer-events: none; z-index: 1000;
   }
 
-  /* Vignette */
   body::after {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%);
-    pointer-events: none;
-    z-index: 999;
+    pointer-events: none; z-index: 999;
   }
 
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -52,10 +45,8 @@
   @keyframes glitchX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   @keyframes scanMove { 0%{top:-5%} 100%{top:105%} }
   @keyframes fadeIn { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
-  @keyframes pulseGlow { 0%,100%{box-shadow:0 0 8px rgba(0,255,65,.15)} 50%{box-shadow:0 0 25px rgba(0,255,65,.35)} }
-  @keyframes movablePulse { 0%,100%{box-shadow:inset 0 0 4px rgba(0,255,65,.4)} 50%{box-shadow:inset 0 0 12px rgba(0,255,65,.8)} }
-  @keyframes solvedFlash { 0%{filter:brightness(1)} 50%{filter:brightness(2.5)} 100%{filter:brightness(1)} }
   @keyframes completeBurst { 0%{box-shadow:0 0 0 rgba(0,255,65,0)} 50%{box-shadow:0 0 60px rgba(0,255,65,.6)} 100%{box-shadow:0 0 0 rgba(0,255,65,0)} }
+  @keyframes revealCell { from{opacity:0} to{opacity:1} }
 
   .scanline-move {
     position: fixed; left:0; right:0; height: 3px;
@@ -70,416 +61,355 @@
     animation: flicker 8s infinite;
   }
 
-  /* Header */
-  .hdr { text-align: center; margin-bottom: 18px; }
+  .hdr { text-align: center; margin-bottom: 24px; }
   .date {
-    font-size: 14px; color: var(--danger); letter-spacing: 8px; margin-bottom: 4px;
+    font-size: 42px; color: var(--danger); letter-spacing: 16px; margin-bottom: 10px;
     animation: glitchX 4s infinite;
   }
-  .sub { font-size: 10px; color: var(--text-dim); letter-spacing: 4px; }
+  .sub { font-size: 16px; color: var(--text-dim); letter-spacing: 6px; }
   .cur { animation: blink 1s step-end infinite; }
 
-  /* Status */
   .status {
     display: flex; justify-content: space-between; align-items: center;
-    width: 100%; max-width: 520px; margin-bottom: 10px;
-    font-size: 11px; padding: 0 4px;
+    width: 100%; max-width: 700px; margin-bottom: 14px;
+    font-size: 16px; padding: 0 4px;
   }
   .recovery { color: var(--accent); }
-  .bar { display:inline-block; width:70px; height:7px; background:#111; border:1px solid #2a2a2a; margin-left:6px; vertical-align:middle; overflow:hidden; }
-  .bar-fill { height:100%; background:var(--accent); transition:width .3s; }
   .mv { color: #444; }
+  .name-signal {
+    font-size: 16px;
+    color: var(--danger);
+    letter-spacing: 3px;
+    opacity: 0.6;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 700px;
+    text-align: center;
+    margin-bottom: 8px;
+    height: 22px;
+  }
 
-  /* Grid */
+  .grid-area {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
   .grid-wrap {
     position: relative;
-    animation: pulseGlow 4s ease-in-out infinite;
     border: 1px solid #1a1a1a;
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(21, 1fr);
-    grid-template-rows: repeat(21, 1fr);
-    width: min(480px, 88vw);
-    height: min(480px, 88vw);
+    width: min(680px, 92vw);
+    height: min(680px, 92vw);
     background: #0d0d0d;
     gap: 0;
   }
 
   .c {
     position: relative;
-    transition: background .12s, box-shadow .12s;
+    transition: background .08s;
   }
 
-  /* QR colors */
+  /* QR cell colors */
   .c-b { background: #d0d0d0; }
   .c-w { background: #141414; }
 
-  /* Finder pattern cells — slightly brighter to stand out */
-  .c-fb { background: #e8e8e8; }
-  .c-fw { background: #0e0e0e; }
+  /* Hidden cells (not yet revealed) */
+  .c-hidden { background: #0d0d0d !important; }
 
-  /* Fixed non-finder, non-movable: dim them */
-  .c-fixed { opacity: 0.35; }
+  /* Puzzle area cells — clickable */
+  .c-puzzle { cursor: pointer; }
+  .c-puzzle:hover { opacity: 0.8; }
 
-  /* Empty cell */
-  .c-empty {
-    background: var(--danger-dim) !important;
-    box-shadow: inset 0 0 12px rgba(255,0,51,.25);
-    opacity: 1 !important;
+  /* Hint: small reference grid */
+  .hint-wrap { text-align: center; }
+  .hint-label { font-size: 12px; color: #1a1a1a; letter-spacing: 4px; margin-bottom: 6px; }
+  .hint-grid {
+    display: inline-grid;
+    gap: 2px;
+    opacity: 0.12;
   }
+  .hint-cell { width: 22px; height: 22px; }
+  .hint-b { background: #d0d0d0; }
+  .hint-w { background: #333; }
 
-  /* Movable cells — HIGH VISIBILITY */
-  .c-mov {
-    opacity: 1 !important;
-    cursor: pointer;
-    animation: movablePulse 2s ease-in-out infinite;
-    z-index: 2;
-    border: 1px solid rgba(0,255,65,.3);
-  }
-  .c-mov:hover {
-    box-shadow: 0 0 14px rgba(0,255,65,.7) !important;
-    border-color: var(--accent);
-  }
+  /* Revealed cells animation */
+  .c-reveal { animation: revealCell .4s ease forwards; }
 
-  /* Correct position */
-  .c-correct {
-    opacity: 1 !important;
-    border: 1px solid rgba(0,255,65,.15);
-  }
-  .c-correct.c-b { background: #e0ffe0; }
+  .ftr { margin-top: 20px; text-align: center; font-size: 14px; color: #2a2a2a; max-width: 700px; }
+  .ftr .h { color: #383838; margin-top: 8px; }
 
-  /* Solved animation */
-  .c-solved { animation: solvedFlash .4s ease; }
-
-  /* Footer */
-  .ftr { margin-top: 14px; text-align: center; font-size: 10px; color: #2a2a2a; max-width: 520px; }
-  .ftr .h { color: #383838; margin-top: 6px; }
-
-  /* Error floats */
   .err {
     position: fixed; font-size: 9px; color: var(--danger); opacity: .18;
     pointer-events: none; z-index: 500; white-space: nowrap;
   }
 
-  /* Completion overlay */
   .done-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.97);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     z-index: 2000; animation: fadeIn .8s ease;
   }
-  .done-title { font-size: 14px; color: var(--accent); letter-spacing: 6px; margin-bottom: 24px; }
+  .done-title { font-size: 22px; color: var(--accent); letter-spacing: 8px; margin-bottom: 28px; }
   .qr-box { border: 2px solid var(--accent); animation: completeBurst 2s ease-in-out infinite; }
-  .done-scan { margin-top: 24px; font-size: 11px; color: var(--text-dim); letter-spacing: 3px; animation: blink 2s step-end infinite; }
+  .done-scan { margin-top: 28px; font-size: 16px; color: var(--text-dim); letter-spacing: 4px; animation: blink 2s step-end infinite; }
 </style>
 </head>
 <body>
 
 <div class="scanline-move"></div>
-<div class="container" id="app"></div>
+<div class="container" id="app">
+  <div style="color:var(--text-dim);font-size:11px;">LOADING SYSTEM<span class="cur">_</span></div>
+</div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 // ============================================
-// QR Matrix Generation (Version 1, 21x21)
+// Real QR Code
 // ============================================
-const SIZE = 21;
+const TARGET_URL = "https://bychanlee.github.io/0313/";
+
+const qr = qrcode(0, 'L');
+qr.addData(TARGET_URL);
+qr.make();
+
+const SIZE = qr.getModuleCount();
 const TOTAL = SIZE * SIZE;
-const TARGET_URL = "https://your-puzzle-2-url.github.io"; // ← 2번 퍼즐 URL
 
-function generateQRMatrix(url) {
-  const m = Array.from({length:SIZE}, ()=> Array(SIZE).fill(0));
-  
-  function drawFinder(m, r0, c0) {
-    for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++) {
-      const mr=r0+r, mc=c0+c;
-      if(mr<0||mr>=SIZE||mc<0||mc>=SIZE) continue;
-      if(r===-1||r===7||c===-1||c===7) m[mr][mc]=0;
-      else if(r===0||r===6||c===0||c===6) m[mr][mc]=1;
-      else if(r>=2&&r<=4&&c>=2&&c<=4) m[mr][mc]=1;
-      else m[mr][mc]=0;
-    }
+const qrMatrix = [];
+for (let r = 0; r < SIZE; r++) {
+  const row = [];
+  for (let c = 0; c < SIZE; c++) {
+    row.push(qr.isDark(r, c) ? 1 : 0);
   }
-  drawFinder(m,0,0); drawFinder(m,0,14); drawFinder(m,14,0);
-  
-  // Timing
-  for(let i=8;i<13;i++){m[6][i]=i%2===0?1:0; m[i][6]=i%2===0?1:0;}
-  // Dark module
-  m[13][8]=1;
-  
-  // Fixed mask
-  const fx = Array.from({length:SIZE},()=>Array(SIZE).fill(false));
-  for(let r=0;r<=8;r++) for(let c=0;c<=8;c++) fx[r][c]=true;
-  for(let r=0;r<=8;r++) for(let c=13;c<=20;c++) fx[r][c]=true;
-  for(let r=13;r<=20;r++) for(let c=0;c<=8;c++) fx[r][c]=true;
-  for(let i=8;i<13;i++){fx[6][i]=true;fx[i][6]=true;}
-  for(let i=0;i<=8;i++){fx[8][i]=true;fx[i][8]=true;}
-  for(let i=13;i<=20;i++){fx[8][i]=true;fx[i][8]=true;}
-  fx[13][8]=true;
-  
-  // Seeded random from URL
-  let seed=0;
-  for(let i=0;i<url.length;i++) seed=((seed<<5)-seed+url.charCodeAt(i))|0;
-  seed=Math.abs(seed)||12345;
-  function srand(){seed=(seed*16807)%2147483647;return seed/2147483647;}
-  
-  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-    if(!fx[r][c]) m[r][c]=srand()>.5?1:0;
-  }
-  // Mask 0
-  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-    if(!fx[r][c]&&(r+c)%2===0) m[r][c]^=1;
-  }
-  return m;
+  qrMatrix.push(row);
 }
 
-const qrMatrix = generateQRMatrix(TARGET_URL);
-
-// Flatten
+// Flat target: 1=dark, 0=light
 const target = [];
-for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) target.push(qrMatrix[r][c]);
-
-// Finder cell indices
-const finderSet = new Set();
-for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-  if((r<=7&&c<=7)||(r<=7&&c>=13)||(r>=13&&c<=7)) finderSet.add(r*SIZE+c);
-}
-
-// ============================================
-// Center 3x3 movable area
-// ============================================
-// Center of 21x21 = (10,10). 3x3 area: rows 9-11, cols 9-11
-const CENTER = 10;
-const HALF = 1; // 3x3 = center ± 1
-const movablePositions = [];
-for(let r=CENTER-HALF;r<=CENTER+HALF;r++){
-  for(let c=CENTER-HALF;c<=CENTER+HALF;c++){
-    movablePositions.push(r*SIZE+c);
-  }
-}
-// 9 cells, 1 empty = 8 tiles slide puzzle
-
-// ============================================
-// Puzzle State
-// ============================================
-let grid = new Array(TOTAL);
-for(let i=0;i<TOTAL;i++) grid[i]=i; // all correct
-
-// Shuffle only movable area
-const emptyGlobal = CENTER*SIZE+CENTER; // center cell is empty
-const movableValues = movablePositions.filter(p=>p!==emptyGlobal).map(p=>p);
-
-// Shuffle
-function shuffle(arr){
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
+for (let r = 0; r < SIZE; r++) {
+  for (let c = 0; c < SIZE; c++) {
+    target.push(qrMatrix[r][c]);
   }
 }
 
-// Ensure solvable: for 3x3 (8-puzzle), solvable if inversions even
-function countInversions(arr){
-  let inv=0;
-  for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++){
-    if(arr[i]>arr[j]) inv++;
+// ============================================
+// Puzzle area: center 3x3
+// ============================================
+const CENTER = Math.floor(SIZE / 2);
+const HALF = 1;
+const puzzlePositions = new Set();
+for (let r = CENTER - HALF; r <= CENTER + HALF; r++) {
+  for (let c = CENTER - HALF; c <= CENTER + HALF; c++) {
+    puzzlePositions.add(r * SIZE + c);
   }
-  return inv;
 }
 
-// Shuffle until not solved and solvable
-function initShuffle(){
-  do {
-    shuffle(movableValues);
-  } while(
-    countInversions(movableValues)%2!==0 ||
-    movableValues.every((v,i)=>v===movablePositions.filter(p=>p!==emptyGlobal)[i])
-  );
-}
-initShuffle();
+// ============================================
+// State: current cell values (only puzzle area can differ from target)
+// ============================================
+const state = new Array(TOTAL);
+for (let i = 0; i < TOTAL; i++) state[i] = target[i];
 
-// Place into grid
-grid[emptyGlobal] = -1;
-let vi=0;
-for(const pos of movablePositions){
-  if(pos===emptyGlobal) continue;
-  grid[pos] = movableValues[vi++];
+// Lights Out: toggling a cell also flips its orthogonal neighbors (within puzzle area)
+function lightsOutToggle(pos) {
+  const r = Math.floor(pos / SIZE), c = pos % SIZE;
+  const cells = [pos];
+  const neighbors = [
+    [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]
+  ];
+  for (const [nr, nc] of neighbors) {
+    const npos = nr * SIZE + nc;
+    if (puzzlePositions.has(npos)) cells.push(npos);
+  }
+  for (const p of cells) {
+    state[p] = state[p] === 1 ? 0 : 1;
+  }
 }
 
-let emptyPos = emptyGlobal;
-let moves = 0;
+// Flip ALL puzzle cells so recovery starts at 0%
+const puzzleArr = [...puzzlePositions];
+for (const idx of puzzleArr) {
+  state[idx] = state[idx] === 1 ? 0 : 1;
+}
+
+let clicks = 0;
 let completed = false;
-
-const movableSet = new Set(movablePositions);
+let revealed = false;
 
 // ============================================
 // Logic
 // ============================================
-function getNeighbors(pos){
-  const r=Math.floor(pos/SIZE), c=pos%SIZE, n=[];
-  if(r>0) n.push(pos-SIZE);
-  if(r<SIZE-1) n.push(pos+SIZE);
-  if(c>0) n.push(pos-1);
-  if(c<SIZE-1) n.push(pos+1);
-  return n;
-}
-
-function getRecovery(){
-  let ok=0,tot=0;
-  for(const p of movablePositions){
-    if(grid[p]===-1) continue;
-    tot++;
-    if(grid[p]===p) ok++;
+function getRecovery() {
+  let ok = 0;
+  for (const p of puzzlePositions) {
+    if (state[p] === target[p]) ok++;
   }
-  return tot===0?100:Math.floor(ok/tot*100);
+  return Math.floor(ok / puzzlePositions.size * 100);
 }
 
-function isComplete(){
-  for(const p of movablePositions){
-    if(grid[p]===-1) continue;
-    if(grid[p]!==p) return false;
+function isComplete() {
+  for (const p of puzzlePositions) {
+    if (state[p] !== target[p]) return false;
   }
   return true;
 }
 
-function doMove(pos){
-  if(completed) return;
-  if(!movableSet.has(pos)) return;
-  if(grid[pos]===-1) return;
-  
-  const nb = getNeighbors(pos);
-  const emptyNb = nb.find(n=>grid[n]===-1 && movableSet.has(n));
-  if(emptyNb===undefined) return;
-  
-  grid[emptyNb]=grid[pos];
-  grid[pos]=-1;
-  emptyPos=pos;
-  moves++;
-  
-  if(isComplete()){
-    completed=true;
-    setTimeout(()=>render(),50);
+function doToggle(pos) {
+  if (completed) return;
+  if (!puzzlePositions.has(pos)) return;
+  lightsOutToggle(pos);
+  clicks++;
+
+  if (isComplete()) {
+    completed = true;
+    render();
+    setTimeout(revealQR, 400);
     return;
   }
   render();
 }
 
 // ============================================
-// Error message spawner
+// Reveal sequence: show full QR after solving
 // ============================================
-const ERRS=["SEGFAULT 0x00FF","KERNEL PANIC","BUFFER OVERFLOW","ACCESS DENIED",
-  "CORRUPTED SECTOR","FATAL EXCEPTION","MEMORY LEAK","STACK OVERFLOW",
-  "INVALID OPCODE","BREACH DETECTED","DATA LOSS","CHECKSUM FAIL"];
+function revealQR() {
+  revealed = true;
+  render();
+  // After reveal animation, show scan overlay
+  setTimeout(() => {
+    showScanOverlay();
+  }, 2000);
+}
 
-function spawnErr(){
-  if(completed) return;
-  if(Math.random()<.35){
-    const el=document.createElement('div');
-    el.className='err';
-    el.textContent='> '+ERRS[Math.floor(Math.random()*ERRS.length)];
-    el.style.left=Math.random()*80+5+'%';
-    el.style.top=Math.random()*80+5+'%';
-    el.style.opacity=.1+Math.random()*.15;
-    el.style.fontSize=(8+Math.random()*3)+'px';
+function showScanOverlay() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="done-overlay">
+      <div class="done-title">SYSTEM_RECOVERED</div>
+      <canvas id="qr-canvas" class="qr-box"></canvas>
+      <div class="done-scan">SCAN TO PROCEED<span class="cur">_</span></div>
+    </div>`;
+  drawFinalQR();
+}
+
+// ============================================
+// Error messages
+// ============================================
+const ERRS = ["SEGFAULT 0x00FF", "KERNEL PANIC", "BUFFER OVERFLOW", "ACCESS DENIED",
+  "CORRUPTED SECTOR", "FATAL EXCEPTION", "MEMORY LEAK", "STACK OVERFLOW",
+  "INVALID OPCODE", "BREACH DETECTED", "DATA LOSS", "CHECKSUM FAIL"];
+
+function spawnErr() {
+  if (completed) return;
+  if (Math.random() < .35) {
+    const el = document.createElement('div');
+    el.className = 'err';
+    el.textContent = '> ' + ERRS[Math.floor(Math.random() * ERRS.length)];
+    el.style.left = Math.random() * 80 + 5 + '%';
+    el.style.top = Math.random() * 80 + 5 + '%';
+    el.style.opacity = .1 + Math.random() * .15;
+    el.style.fontSize = (8 + Math.random() * 3) + 'px';
     document.body.appendChild(el);
-    setTimeout(()=>el.remove(),2000+Math.random()*3000);
+    setTimeout(() => el.remove(), 2000 + Math.random() * 3000);
   }
 }
-setInterval(spawnErr,1800);
+setInterval(spawnErr, 1800);
+
+// ============================================
+// Name signal: repeats based on recovery %
+// ============================================
+function buildNameSignal(rec) {
+  if (rec <= 0) return '';
+  const name = '김유진';
+  const repeats = Math.ceil(rec / 100 * 10); // 0~10 repeats
+  return name.repeat(repeats);
+}
+
+// ============================================
+// Hint grid: shows target pattern for puzzle area
+// ============================================
+function buildHintGrid() {
+  const side = HALF * 2 + 1;
+  let cells = '';
+  for (let r = CENTER - HALF; r <= CENTER + HALF; r++) {
+    for (let c = CENTER - HALF; c <= CENTER + HALF; c++) {
+      const val = target[r * SIZE + c];
+      cells += `<div class="hint-cell ${val === 1 ? 'hint-b' : 'hint-w'}"></div>`;
+    }
+  }
+  return `<div class="hint-wrap">
+    <div class="hint-label">MEMORY_FRAGMENT</div>
+    <div class="hint-grid" style="grid-template-columns:repeat(${side},1fr);">${cells}</div>
+  </div>`;
+}
 
 // ============================================
 // Render
 // ============================================
-function render(){
-  const app=document.getElementById('app');
-  
-  if(completed){
-    app.innerHTML=`
-      <div class="done-overlay">
-        <div class="done-title">SYSTEM_RECOVERED</div>
-        <canvas id="qr-canvas" class="qr-box"></canvas>
-        <div class="done-scan">SCAN TO PROCEED<span class="cur">_</span></div>
-      </div>`;
-    drawFinalQR();
-    return;
-  }
-  
-  const rec=getRecovery();
-  
-  let cells='';
-  for(let i=0;i<TOTAL;i++){
-    const val=grid[i];
-    const isEmpty=val===-1;
-    const isFinder=finderSet.has(i);
-    const isMovable=movableSet.has(i);
-    const isCorrect=!isEmpty&&val===i;
-    
-    // Can this cell be clicked? (movable + adjacent to empty)
-    let canClick=false;
-    if(isMovable&&!isEmpty){
-      const nb=getNeighbors(i);
-      canClick=nb.some(n=>grid[n]===-1&&movableSet.has(n));
-    }
-    
-    // Determine display color
-    let cls='c';
-    if(isEmpty){
-      cls+=' c-empty';
+function render() {
+  const app = document.getElementById('app');
+  const rec = getRecovery();
+
+  let cells = '';
+  for (let i = 0; i < TOTAL; i++) {
+    const isPuzzle = puzzlePositions.has(i);
+
+    if (!isPuzzle && !revealed) {
+      cells += `<div class="c c-hidden"></div>`;
+    } else if (isPuzzle && !completed) {
+      const colorCls = state[i] === 1 ? 'c-b' : 'c-w';
+      cells += `<div class="c c-puzzle ${colorCls}" onclick="doToggle(${i})"></div>`;
     } else {
-      const color=target[val]; // 1=black, 0=white in QR
-      if(isFinder){
-        cls+=color===1?' c-fb':' c-fw';
-      } else {
-        cls+=color===1?' c-b':' c-w';
+      const val = isPuzzle ? state[i] : target[i];
+      const colorCls = val === 1 ? 'c-b' : 'c-w';
+      const revealCls = !isPuzzle && revealed ? ' c-reveal' : '';
+      let style = '';
+      if (!isPuzzle && revealed) {
+        const r = Math.floor(i / SIZE), c = i % SIZE;
+        const dist = Math.abs(r - CENTER) + Math.abs(c - CENTER);
+        style = `style="animation-delay:${dist * 15}ms"`;
       }
+      cells += `<div class="c ${colorCls}${revealCls}" ${style}></div>`;
     }
-    
-    // Visibility
-    if(!isEmpty && !isFinder && !isMovable){
-      cls+=' c-fixed';
-    }
-    if(isMovable && !isEmpty){
-      if(isCorrect) cls+=' c-correct';
-      if(canClick) cls+=' c-mov';
-    }
-    
-    const onclick=canClick?`onclick="doMove(${i})"`:''  ;
-    cells+=`<div class="${cls}" ${onclick}></div>`;
   }
-  
-  app.innerHTML=`
+
+  app.innerHTML = `
     <div class="hdr">
       <div class="date">2026-03-13</div>
       <div class="sub">SYSTEM_BREACH<span class="cur">_</span></div>
     </div>
-    <div class="status">
-      <span class="recovery">RECOVERY: ${rec}%
-        <span class="bar"><span class="bar-fill" style="width:${rec}%"></span></span>
-      </span>
-      <span class="mv">MOVES: ${moves}</span>
-    </div>
-    <div class="grid-wrap">
-      <div class="grid">${cells}</div>
+    <div class="name-signal">${buildNameSignal(rec)}</div>
+    <div class="grid-area">
+      ${!completed && clicks >= 50 ? buildHintGrid() : ''}
+      <div class="grid-wrap">
+        <div class="grid" style="grid-template-columns:repeat(${SIZE},1fr);grid-template-rows:repeat(${SIZE},1fr);">${cells}</div>
+      </div>
     </div>
     <div class="ftr">
-      <div class="h">> RECONSTRUCT THE CORRUPTED SECTOR<span class="cur">_</span></div>
+      <div class="h">> REPAIR CORRUPTED SECTOR<span class="cur">_</span></div>
     </div>`;
 }
 
-function drawFinalQR(){
-  const cv=document.getElementById('qr-canvas');
-  if(!cv) return;
-  const cs=Math.floor(Math.min(280,window.innerWidth*.55)/SIZE);
-  const ts=cs*SIZE+8;
-  cv.width=ts; cv.height=ts;
-  const ctx=cv.getContext('2d');
-  ctx.fillStyle='#fff';
-  ctx.fillRect(0,0,ts,ts);
-  for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++){
-    ctx.fillStyle=qrMatrix[r][c]===1?'#000':'#fff';
-    ctx.fillRect(4+c*cs,4+r*cs,cs,cs);
+function drawFinalQR() {
+  const cv = document.getElementById('qr-canvas');
+  if (!cv) return;
+  const cs = Math.floor(Math.min(280, window.innerWidth * .55) / SIZE);
+  const quiet = 4;
+  const ts = cs * SIZE + quiet * 2;
+  cv.width = ts;
+  cv.height = ts;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, ts, ts);
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      ctx.fillStyle = qrMatrix[r][c] === 1 ? '#000' : '#fff';
+      ctx.fillRect(quiet + c * cs, quiet + r * cs, cs, cs);
+    }
   }
 }
 
-// Init
 render();
 </script>
 </body>

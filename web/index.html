@@ -18,55 +18,320 @@
     color: var(--accent);
     font-family: 'Share Tech Mono', monospace;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     overflow: hidden;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
   }
+
   /* CRT scanlines */
   body::before {
     content: '';
     position: fixed; inset: 0;
     background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
-    pointer-events: none; z-index: 1000;
+    pointer-events: none; z-index: 1001;
   }
+
   /* Vignette */
   body::after {
     content: '';
     position: fixed; inset: 0;
     background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%);
-    pointer-events: none; z-index: 999;
+    pointer-events: none; z-index: 1000;
   }
+
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   @keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.5} 94%{opacity:1} 95.5%{opacity:.3} 96%{opacity:1} }
-  .container {
-    text-align: center;
-    animation: flicker 8s infinite;
-    padding: 20px;
+  @keyframes glitchX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+  @keyframes scanMove { 0%{top:-5%} 100%{top:105%} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+  .scanline-move {
+    position: fixed; left:0; right:0; height: 3px;
+    background: linear-gradient(to bottom, transparent, rgba(0,255,65,.04), transparent);
+    animation: scanMove 4s linear infinite;
+    pointer-events: none; z-index: 999;
   }
-  .title {
-    font-size: 14px;
-    color: var(--danger);
-    letter-spacing: 6px;
+
+  .cur { animation: blink 1s step-end infinite; }
+
+  /* Hidden ASCII layer */
+  .ascii-layer {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .ascii-text {
+    font-size: min(4.5vw, 32px);
+    line-height: 1.2;
+    color: #1a1a1a;
+    white-space: pre;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* Dark overlay with flashlight hole */
+  .dark-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    background: var(--bg);
+    touch-action: none;
+    transition: background-position 0s;
+  }
+  .dark-overlay.active {
+    background: radial-gradient(circle 90px at var(--fx) var(--fy), transparent 0%, transparent 40%, var(--bg) 100%);
+  }
+
+  /* Bottom input area */
+  .input-area {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 500;
+    padding: 24px 20px 40px;
+    text-align: center;
+    background: linear-gradient(to top, var(--bg) 60%, transparent);
+  }
+  .input-label {
+    font-size: 16px;
+    color: #333;
+    letter-spacing: 5px;
+    margin-bottom: 18px;
+  }
+  .code-input {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
     margin-bottom: 20px;
   }
-  .msg {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 3px;
-    line-height: 2;
+  .code-digit {
+    width: 58px;
+    height: 68px;
+    background: #111;
+    border: 1px solid #222;
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 34px;
+    text-align: center;
+    caret-color: var(--accent);
+    outline: none;
+    border-radius: 0;
+    -webkit-appearance: none;
   }
-  .cur { animation: blink 1s step-end infinite; }
+  .code-digit:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(0,255,65,.2);
+  }
+  .code-digit.wrong {
+    border-color: var(--danger);
+    animation: shake .4s ease;
+  }
+  .submit-btn {
+    background: none;
+    border: 1px solid #222;
+    color: #333;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 5px;
+    padding: 14px 40px;
+    cursor: pointer;
+    border-radius: 0;
+    -webkit-appearance: none;
+  }
+  .submit-btn:active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Hint text */
+  .hint-msg {
+    position: fixed;
+    top: 30px;
+    left: 0; right: 0;
+    text-align: center;
+    z-index: 500;
+    font-size: 11px;
+    color: #1a1a1a;
+    letter-spacing: 3px;
+    animation: flicker 8s infinite;
+  }
+
+  /* Success overlay */
+  .success-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.97);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 2000;
+    animation: fadeIn .8s ease;
+  }
+  .success-title {
+    font-size: 22px;
+    color: var(--accent);
+    letter-spacing: 8px;
+    margin-bottom: 20px;
+  }
+  .success-msg {
+    font-size: 14px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    line-height: 2.2;
+    text-align: center;
+  }
+
+  /* Error floats */
+  .err {
+    position: fixed; font-size: 9px; color: var(--danger); opacity: .18;
+    pointer-events: none; z-index: 800; white-space: nowrap;
+  }
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="title">SYSTEM_BREACH</div>
-  <div class="msg">
-    > CONNECTION ESTABLISHED<br>
-    > LOADING SEQUENCE...<br>
-    > STAND BY<span class="cur">_</span>
-  </div>
+
+<div class="scanline-move"></div>
+<div class="hint-msg">> TOUCH TO SCAN<span class="cur">_</span></div>
+
+<!-- ASCII art hidden behind dark overlay -->
+<div class="ascii-layer">
+  <div class="ascii-text" id="ascii"></div>
 </div>
+
+<!-- Dark overlay — flashlight punches through this -->
+<div class="dark-overlay" id="overlay"></div>
+
+<!-- Password input -->
+<div class="input-area" id="inputArea">
+  <div class="input-label">ENTER ACCESS CODE</div>
+  <div class="code-input" id="codeInput">
+    <input class="code-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="0">
+    <input class="code-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="1">
+    <input class="code-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="2">
+    <input class="code-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-idx="3">
+  </div>
+  <button class="submit-btn" id="submitBtn">SUBMIT</button>
+</div>
+
+<div id="app"></div>
+
+<script>
+// ============================================
+// ASCII Art: BIRTH
+// ============================================
+const BIRTH_ASCII = `
+██████  ██ ██████  ████████ ██   ██
+██   ██ ██ ██   ██    ██    ██   ██
+██████  ██ ██████     ██    ███████
+██   ██ ██ ██   ██    ██    ██   ██
+██████  ██ ██   ██    ██    ██   ██
+`.trim();
+
+document.getElementById('ascii').textContent = BIRTH_ASCII;
+
+// ============================================
+// Flashlight on dark overlay (CSS radial-gradient)
+// ============================================
+const overlay = document.getElementById('overlay');
+
+function onTouch(e) {
+  e.preventDefault();
+  const t = e.touches ? e.touches[0] : e;
+  overlay.style.setProperty('--fx', t.clientX + 'px');
+  overlay.style.setProperty('--fy', t.clientY + 'px');
+  overlay.classList.add('active');
+}
+
+function onTouchEnd() {
+  overlay.classList.remove('active');
+}
+
+overlay.addEventListener('touchstart', onTouch, { passive: false });
+overlay.addEventListener('touchmove', onTouch, { passive: false });
+overlay.addEventListener('touchend', onTouchEnd);
+overlay.addEventListener('mousedown', (e) => { onTouch(e); });
+overlay.addEventListener('mousemove', (e) => { if (overlay.classList.contains('active')) onTouch(e); });
+overlay.addEventListener('mouseup', onTouchEnd);
+overlay.addEventListener('mouseleave', onTouchEnd);
+
+// ============================================
+// Code input logic
+// ============================================
+const digits = document.querySelectorAll('.code-digit');
+const ANSWER = '0615';
+
+digits.forEach((input, i) => {
+  input.addEventListener('input', () => {
+    input.value = input.value.replace(/[^0-9]/g, '').slice(-1);
+    if (input.value && i < 3) digits[i + 1].focus();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !input.value && i > 0) {
+      digits[i - 1].focus();
+    }
+  });
+});
+
+document.getElementById('submitBtn').addEventListener('click', checkCode);
+
+function checkCode() {
+  const code = [...digits].map(d => d.value).join('');
+  if (code.length < 4) {
+    digits.forEach(d => { if (!d.value) d.classList.add('wrong'); });
+    setTimeout(() => digits.forEach(d => d.classList.remove('wrong')), 500);
+    return;
+  }
+  if (code === ANSWER) {
+    showSuccess();
+  } else {
+    digits.forEach(d => d.classList.add('wrong'));
+    setTimeout(() => {
+      digits.forEach(d => { d.classList.remove('wrong'); d.value = ''; });
+      digits[0].focus();
+    }, 500);
+  }
+}
+
+// ============================================
+// Success
+// ============================================
+function showSuccess() {
+  document.getElementById('app').innerHTML = `
+    <div class="success-overlay">
+      <div class="success-title">ACCESS_GRANTED</div>
+      <div class="success-msg">
+        > DECRYPTION COMPLETE<br>
+        > REDIRECTING<span class="cur">_</span>
+      </div>
+    </div>`;
+  setTimeout(() => {
+    window.location.href = 'puzzle3.html';
+  }, 2000);
+}
+
+// ============================================
+// Error message spawner
+// ============================================
+const ERRS = ["SEGFAULT 0x00FF", "KERNEL PANIC", "BUFFER OVERFLOW", "ACCESS DENIED",
+  "CORRUPTED SECTOR", "FATAL EXCEPTION", "MEMORY LEAK", "STACK OVERFLOW"];
+
+function spawnErr() {
+  if (Math.random() < .3) {
+    const el = document.createElement('div');
+    el.className = 'err';
+    el.textContent = '> ' + ERRS[Math.floor(Math.random() * ERRS.length)];
+    el.style.left = Math.random() * 80 + 5 + '%';
+    el.style.top = Math.random() * 60 + 5 + '%';
+    el.style.opacity = .1 + Math.random() * .12;
+    el.style.fontSize = (8 + Math.random() * 3) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000 + Math.random() * 3000);
+  }
+}
+setInterval(spawnErr, 2000);
+</script>
 </body>
 </html>

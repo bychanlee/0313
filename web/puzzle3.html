@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FINAL_SEQUENCE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+  :root { --bg: #0a0a0a; --accent: #00ff41; --danger: #ff0033; --text-dim: #003d10; }
+  body {
+    background: var(--bg); color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh; overflow: hidden; cursor: default;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px);
+    pointer-events: none; z-index: 1000;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.65) 100%);
+    pointer-events: none; z-index: 999;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes flicker { 0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.5} 94%{opacity:1} 95.5%{opacity:.3} 96%{opacity:1} }
+  @keyframes glitchX { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+  @keyframes scanMove { 0%{top:-5%} 100%{top:105%} }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .scanline-move {
+    position: fixed; left:0; right:0; height: 3px;
+    background: linear-gradient(to bottom, transparent, rgba(0,255,65,.04), transparent);
+    animation: scanMove 4s linear infinite; pointer-events: none; z-index: 998;
+  }
+  .cur { animation: blink 1s step-end infinite; }
+  .hdr {
+    position: fixed; top: 16px; left: 0; right: 0;
+    text-align: center; z-index: 10; animation: flicker 8s infinite;
+  }
+  .title { font-size: 24px; color: var(--danger); letter-spacing: 10px; margin-bottom: 4px; animation: glitchX 4s infinite; }
+  .sub { font-size: 11px; color: var(--text-dim); letter-spacing: 4px; }
+  canvas { position: fixed; inset: 0; z-index: 1; touch-action: none; }
+  .ftr {
+    position: fixed; bottom: 16px; left: 0; right: 0; text-align: center;
+    font-size: 11px; color: #1a1a1a; letter-spacing: 3px; z-index: 10; animation: flicker 8s infinite;
+  }
+  .rotate-hint {
+    position: fixed; bottom: 16px; right: 16px;
+    font-size: 9px; color: #151515; letter-spacing: 2px; z-index: 10;
+  }
+  .success-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.97);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 2000; animation: fadeIn .8s ease;
+  }
+  .success-title { font-size: 28px; color: var(--accent); letter-spacing: 10px; margin-bottom: 24px; }
+  .success-msg { font-size: 16px; color: var(--text-dim); letter-spacing: 5px; line-height: 2.4; text-align: center; }
+  .err {
+    position: fixed; font-size: 9px; color: var(--danger); opacity: .18;
+    pointer-events: none; z-index: 800; white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div class="scanline-move"></div>
+<div class="hdr">
+  <div class="title">FINAL_SEQUENCE</div>
+  <div class="sub">> RECONSTRUCT DATA FRAGMENTS<span class="cur">_</span></div>
+</div>
+<canvas id="cv"></canvas>
+<div class="ftr">> ALIGN FRAGMENTS TO DECRYPT<span class="cur">_</span></div>
+<div class="rotate-hint">DOUBLE-TAP B TO ROTATE</div>
+<div id="ending"></div>
+
+<script>
+// ============================================
+// TRAVEL pixel font 7×5
+// ============================================
+const L = {
+  T:[[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
+  R:[[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
+  A:[[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+  V:[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0]],
+  E:[[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]],
+  L:[[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,1]]
+};
+
+const WORD = 'TRAVEL';
+const LW = 5, LH = 7, GAP = 3, PAD = 2;
+const B_COLS = PAD*2 + WORD.length*LW + (WORD.length-1)*GAP; // 49
+const B_ROWS = PAD*2 + LH; // 11
+
+// A is wider+taller — B fits at top-right corner
+const A_COLS = B_COLS + 20; // 69
+const A_ROWS = B_ROWS + 6; // 17
+const TARGET_OFF_R = 0; // top edge
+const TARGET_OFF_C = A_COLS - B_COLS; // right edge
+
+// Cell size
+const CS = Math.min(
+  Math.floor((window.innerWidth * 0.95) / A_COLS),
+  Math.floor((window.innerHeight * 0.32) / A_ROWS),
+  20
+);
+
+// Build target (TRAVEL pattern in B_ROWS × B_COLS)
+const tgt = Array.from({length: B_ROWS}, () => Array(B_COLS).fill(0));
+for (let i = 0; i < WORD.length; i++) {
+  const letter = L[WORD[i]];
+  const ox = PAD + i*(LW+GAP);
+  for (let r = 0; r < LH; r++)
+    for (let c = 0; c < LW; c++)
+      tgt[PAD+r][ox+c] = letter[r][c];
+}
+
+// RNG
+function srand(s) { return () => { s=(s*16807+7)%2147483647; return s/2147483647; }; }
+const rng = srand(31326);
+
+// A: full random grid
+const matA = Array.from({length: A_ROWS}, () =>
+  Array.from({length: A_COLS}, () => rng()>0.5?1:0)
+);
+
+// B_180 (what B looks like when rotated 180°):
+// at offset (TARGET_OFF_R, TARGET_OFF_C), B_180 XOR A = tgt
+// so B_180[r][c] = A[TARGET_OFF_R+r][TARGET_OFF_C+c] XOR tgt[r][c]
+const matB180 = Array.from({length: B_ROWS}, (_, r) =>
+  Array.from({length: B_COLS}, (_, c) => matA[TARGET_OFF_R+r][TARGET_OFF_C+c] ^ tgt[r][c])
+);
+
+// matB (stored) = rotate180(matB180)
+function rot180(m) { return m.slice().reverse().map(r=>r.slice().reverse()); }
+function rot90(m) {
+  const R=m.length,C=m[0].length;
+  const o=Array.from({length:C},()=>Array(R).fill(0));
+  for(let r=0;r<R;r++) for(let c=0;c<C;c++) o[c][R-1-r]=m[r][c];
+  return o;
+}
+const matB = rot180(matB180);
+
+// Rotation state: 0=stored, 1=90, 2=180(correct), 3=270
+let rot = 0; // starts as stored (needs 2 rotations to reach 180°=correct)
+function getB() {
+  let g = matB;
+  for (let i=0; i<rot; i++) g = rot90(g);
+  return g;
+}
+
+// ============================================
+// Canvas
+// ============================================
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+
+function resize() {
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// Positions
+const aW = A_COLS*CS, aH = A_ROWS*CS;
+const aX = Math.floor((window.innerWidth - aW)/2);
+const aY = Math.floor(window.innerHeight*0.18);
+
+let bX = aX + 20;
+let bY = aY + aH + 30;
+let solved = false;
+
+function draw() {
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+
+  // Draw A
+  ctx.fillStyle = '#111';
+  ctx.fillRect(aX-1, aY-1, aW+2, aH+2);
+  for (let r=0; r<A_ROWS; r++)
+    for (let c=0; c<A_COLS; c++) {
+      ctx.fillStyle = matA[r][c] ? '#888' : '#1a1a1a';
+      ctx.fillRect(aX+c*CS, aY+r*CS, CS-1, CS-1);
+    }
+
+  // Label A
+  ctx.fillStyle = '#222';
+  ctx.font = '10px "Share Tech Mono"';
+  ctx.fillText('FRAGMENT_A', aX, aY-6);
+
+  // Current B
+  const curB = getB();
+  const bRows = curB.length, bCols = curB[0].length;
+  const bW = bCols*CS, bH = bRows*CS;
+
+  // Draw B
+  ctx.fillStyle = '#0d0d0d';
+  ctx.fillRect(bX-1, bY-1, bW+2, bH+2);
+  for (let r=0; r<bRows; r++)
+    for (let c=0; c<bCols; c++) {
+      ctx.fillStyle = curB[r][c] ? '#667' : '#181820';
+      ctx.fillRect(bX+c*CS, bY+r*CS, CS-1, CS-1);
+    }
+
+  // Label B
+  ctx.fillStyle = '#444';
+  ctx.fillText('FRAGMENT_B', bX, bY-6);
+
+  // XOR overlay where B overlaps A
+  // Compute cell offset of B relative to A
+  const offC = Math.round((bX - aX) / CS);
+  const offR = Math.round((bY - aY) / CS);
+
+  const or0 = Math.max(0, offR);
+  const oc0 = Math.max(0, offC);
+  const or1 = Math.min(A_ROWS, offR + bRows);
+  const oc1 = Math.min(A_COLS, offC + bCols);
+
+  if (or0 < or1 && oc0 < oc1) {
+    // Draw XOR result on top
+    let allMatch = true;
+    const needFullMatch = (or1-or0 === B_ROWS && oc1-oc0 === B_COLS);
+
+    for (let r=or0; r<or1; r++) {
+      for (let c=oc0; c<oc1; c++) {
+        const br = r - offR;
+        const bc = c - offC;
+        if (br<0||br>=bRows||bc<0||bc>=bCols) continue;
+        const xor = matA[r][c] ^ curB[br][bc];
+        ctx.fillStyle = xor ? '#00ff41' : '#050505';
+        ctx.fillRect(aX+c*CS, aY+r*CS, CS, CS);
+
+        // Check match against target at correct offset
+        const tr = r - TARGET_OFF_R;
+        const tc = c - TARGET_OFF_C;
+        if (tr>=0 && tr<B_ROWS && tc>=0 && tc<B_COLS) {
+          if (xor !== tgt[tr][tc]) allMatch = false;
+        }
+      }
+    }
+
+    // Check solved: B must be at correct offset and rotation=2
+    if (allMatch && rot===2 && needFullMatch
+        && offR===TARGET_OFF_R && offC===TARGET_OFF_C && !solved) {
+      solved = true;
+    }
+  }
+}
+
+// ============================================
+// Drag B
+// ============================================
+let dragging = false;
+let dox=0, doy=0;
+
+function inB(x,y) {
+  const curB = getB();
+  const bW = curB[0].length*CS, bH = curB.length*CS;
+  return x>=bX && x<=bX+bW && y>=bY && y<=bY+bH;
+}
+
+cv.addEventListener('mousedown', e => {
+  if (solved) return;
+  if (inB(e.clientX, e.clientY)) {
+    dragging = true;
+    dox = e.clientX - bX;
+    doy = e.clientY - bY;
+  }
+});
+cv.addEventListener('touchstart', e => {
+  if (solved) return;
+  const t = e.touches[0];
+  if (inB(t.clientX, t.clientY)) {
+    e.preventDefault();
+    dragging = true;
+    dox = t.clientX - bX;
+    doy = t.clientY - bY;
+  }
+}, {passive:false});
+
+document.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  bX = e.clientX - dox;
+  bY = e.clientY - doy;
+  draw();
+});
+document.addEventListener('touchmove', e => {
+  if (!dragging) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  bX = t.clientX - dox;
+  bY = t.clientY - doy;
+  draw();
+}, {passive:false});
+
+document.addEventListener('mouseup', () => {
+  if (!dragging) return;
+  dragging = false;
+  // Snap to cell grid
+  bX = aX + Math.round((bX-aX)/CS)*CS;
+  bY = aY + Math.round((bY-aY)/CS)*CS;
+  draw();
+});
+document.addEventListener('touchend', () => {
+  if (!dragging) return;
+  dragging = false;
+  bX = aX + Math.round((bX-aX)/CS)*CS;
+  bY = aY + Math.round((bY-aY)/CS)*CS;
+  draw();
+});
+
+// ============================================
+// Double-tap / double-click to rotate
+// ============================================
+let lastTap = 0;
+cv.addEventListener('dblclick', e => {
+  if (solved) return;
+  if (inB(e.clientX, e.clientY)) {
+    rot = (rot+1)%4;
+    draw();
+  }
+});
+cv.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTap < 350) {
+    const t = e.changedTouches[0];
+    if (inB(t.clientX, t.clientY)) {
+      rot = (rot+1)%4;
+      draw();
+    }
+  }
+  lastTap = now;
+});
+
+// ============================================
+// Ending
+// ============================================
+function showEnding() {
+  document.getElementById('ending').innerHTML = `
+    <div class="success-overlay">
+      <div class="success-title">SYSTEM_UNLOCKED</div>
+      <div class="success-msg">
+        > FINAL COORDINATES DECODED<br>
+        > TARGET: 현관 옆<br>
+        > OBJECT: ██████ 캐리어<br>
+        > RETRIEVE NOW<span class="cur">_</span>
+      </div>
+    </div>`;
+}
+
+// ============================================
+// Error spawner
+// ============================================
+const ERRS=["SEGFAULT 0x00FF","KERNEL PANIC","BUFFER OVERFLOW","ACCESS DENIED",
+  "CORRUPTED SECTOR","FATAL EXCEPTION","MEMORY LEAK","STACK OVERFLOW"];
+function spawnErr(){
+  if(solved)return;
+  if(Math.random()<.3){
+    const el=document.createElement('div');
+    el.className='err';
+    el.textContent='> '+ERRS[Math.floor(Math.random()*ERRS.length)];
+    el.style.left=Math.random()*80+5+'%';
+    el.style.top=Math.random()*60+5+'%';
+    el.style.opacity=.1+Math.random()*.12;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),2000+Math.random()*3000);
+  }
+}
+setInterval(spawnErr,2000);
+
+// Init
+resize();
+</script>
+</body>
+</html>
