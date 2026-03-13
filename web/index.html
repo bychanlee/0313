@@ -69,12 +69,13 @@
     pointer-events: none;
   }
   .ascii-text {
-    font-size: min(3.2vw, 22px);
-    line-height: 1.2;
+    font-size: min(5vw, 28px);
+    line-height: 1.4;
     color: #1a1a1a;
     white-space: pre;
     text-align: center;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    font-weight: bold;
   }
 
   /* Dark overlay with flashlight hole */
@@ -225,11 +226,7 @@
 // ASCII Art: BIRTH
 // ============================================
 const BIRTH_ASCII = `
-██████  ██ ██████  ████████ ██   ██
-██   ██ ██ ██   ██    ██    ██   ██
-██████  ██ ██████     ██    ███████
-██   ██ ██ ██   ██    ██    ██   ██
-██████  ██ ██   ██    ██    ██   ██
+BIRTH
 `.trim();
 
 document.getElementById('ascii').textContent = BIRTH_ASCII;
